@@ -13,7 +13,7 @@ import {
   type InsertBill,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, gte, lte, and, sum } from "drizzle-orm";
+import { eq, desc, gte, lte, and, sum, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -197,11 +197,20 @@ export class DatabaseStorage implements IStorage {
           eq(bills.userId, userId),
           eq(bills.isActive, true),
           eq(bills.isPaid, false),
-          gte(bills.nextDueDate || bills.dueDate, today),
-          lte(bills.nextDueDate || bills.dueDate, nextWeek)
+          or(
+            and(
+              gte(bills.nextDueDate, today),
+              lte(bills.nextDueDate, nextWeek)
+            ),
+            and(
+              eq(bills.nextDueDate, null),
+              gte(bills.dueDate, today),
+              lte(bills.dueDate, nextWeek)
+            )
+          )
         )
       )
-      .orderBy(bills.nextDueDate || bills.dueDate);
+      .orderBy(sql`coalesce(${bills.nextDueDate}, ${bills.dueDate})`);
   }
 
   async createBill(bill: InsertBill): Promise<Bill> {

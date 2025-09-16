@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import TransactionForm from "@/components/transaction-form";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Link } from "wouter";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -121,9 +122,9 @@ export default function Dashboard() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold">Upcoming Bills</h4>
-              <a href="#" className="text-primary text-sm" data-testid="link-view-all-bills">
+              <Link href="/bills" className="text-primary text-sm" data-testid="link-view-all-bills">
                 View All
-              </a>
+              </Link>
             </div>
             <div className="space-y-3">
               {dashboardData?.upcomingBills?.length > 0 ? (

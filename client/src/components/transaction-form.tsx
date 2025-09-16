@@ -12,7 +12,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { insertTransactionSchema, type InsertTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
-const formSchema = insertTransactionSchema.extend({
+const formSchema = insertTransactionSchema.omit({ userId: true }).extend({
   amount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
     message: "Amount must be a positive number",
   }),
@@ -28,6 +28,7 @@ interface TransactionFormProps {
 export default function TransactionForm({ type, onClose }: TransactionFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [categoryOpen, setCategoryOpen] = useState(false);
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -142,7 +143,15 @@ export default function TransactionForm({ type, onClose }: TransactionFormProps)
               <FormItem>
                 <FormLabel>Category</FormLabel>
                 <FormControl>
-                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                  <Select 
+                    open={categoryOpen}
+                    onOpenChange={setCategoryOpen}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setCategoryOpen(false); // Close the select after selection
+                    }} 
+                    value={field.value || undefined}
+                  >
                     <SelectTrigger className="h-12 text-base" data-testid="select-category">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>

@@ -9,11 +9,19 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [transactionType, setTransactionType] = useState<"income" | "expense">("expense");
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading: transactionsLoading } = useQuery({
     queryKey: ["/api/transactions"],
     retry: false,
   });
+
+  const { data: bills, isLoading: billsLoading } = useQuery({
+    queryKey: ["/api/bills"],
+    retry: false,
+  });
+
+  const isLoading = transactionsLoading || billsLoading;
 
   // Get current month info
   const year = currentDate.getFullYear();
@@ -67,14 +75,26 @@ export default function Calendar() {
     return transactions?.filter((t: any) => t.date === dateStr) || [];
   };
 
-  // Check if date has events
+  // Get bills for a specific date
+  const getBillsForDate = (dateStr: string) => {
+    const activeBills = Array.isArray(bills) ? bills.filter((bill: any) => bill.isActive && !bill.isPaid) : [];
+    return activeBills.filter((bill: any) => {
+      const billDate = bill.nextDueDate || bill.dueDate;
+      return billDate === dateStr;
+    }) || [];
+  };
+
+  // Check if date has events (transactions or bills)
   const hasEvents = (dateStr: string) => {
-    return getTransactionsForDate(dateStr).length > 0;
+    const transactionCount = getTransactionsForDate(dateStr).length;
+    const billCount = getBillsForDate(dateStr).length;
+    return transactionCount > 0 || billCount > 0;
   };
 
   // Get today's date string
   const today = new Date().toISOString().split('T')[0];
   const todayTransactions = getTransactionsForDate(today);
+  const todayBills = getBillsForDate(today);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -168,55 +188,109 @@ export default function Calendar() {
         {/* Today's Events */}
         <Card className="mb-20">
           <CardContent className="p-4">
-            <h4 className="font-semibold mb-4">Today's Transactions</h4>
+            <h4 className="font-semibold mb-4">Today's Activity</h4>
             <div className="space-y-3">
-              {todayTransactions.length > 0 ? (
-                todayTransactions.map((transaction: any) => (
-                  <div
-                    key={transaction.id}
-                    className="flex items-center justify-between p-3 bg-accent rounded-xl"
-                    data-testid={`transaction-${transaction.id}`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 ${
-                        transaction.type === 'income' 
-                          ? 'bg-green-100 dark:bg-green-900/20' 
-                          : 'bg-red-100 dark:bg-red-900/20'
-                      }`}>
-                        <i className={`fas ${
-                          transaction.type === 'income' ? 'fa-plus text-green-500' : 'fa-minus text-red-500'
-                        } text-sm`}></i>
+              {/* Today's Transactions */}
+              {todayTransactions.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-muted-foreground mb-2">Transactions</h5>
+                  {todayTransactions.map((transaction: any) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-3 bg-accent rounded-xl mb-2"
+                      data-testid={`transaction-${transaction.id}`}
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 ${
+                          transaction.type === 'income' 
+                            ? 'bg-green-100 dark:bg-green-900/20' 
+                            : 'bg-red-100 dark:bg-red-900/20'
+                        }`}>
+                          <i className={`fas ${
+                            transaction.type === 'income' ? 'fa-plus text-green-500' : 'fa-minus text-red-500'
+                          } text-sm`}></i>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm" data-testid={`transaction-description-${transaction.id}`}>
+                            {transaction.description}
+                          </p>
+                          <p className="text-muted-foreground text-xs" data-testid={`transaction-time-${transaction.id}`}>
+                            {transaction.category || 'Uncategorized'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-sm" data-testid={`transaction-description-${transaction.id}`}>
-                          {transaction.description}
-                        </p>
-                        <p className="text-muted-foreground text-xs" data-testid={`transaction-time-${transaction.id}`}>
-                          {transaction.category || 'Uncategorized'}
-                        </p>
-                      </div>
+                      <p className={`font-semibold ${
+                        transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
+                      }`} data-testid={`transaction-amount-${transaction.id}`}>
+                        {transaction.type === 'income' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
                     </div>
-                    <p className={`font-semibold ${
-                      transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
-                    }`} data-testid={`transaction-amount-${transaction.id}`}>
-                      {transaction.type === 'income' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-muted-foreground text-center py-4" data-testid="text-no-transactions">
-                  No transactions today
+                  ))}
+                </div>
+              )}
+
+              {/* Today's Bills */}
+              {todayBills.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-muted-foreground mb-2">Bills Due Today</h5>
+                  {todayBills.map((bill: any) => (
+                    <div
+                      key={bill.id}
+                      className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-xl mb-2"
+                      data-testid={`bill-${bill.id}`}
+                    >
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 bg-orange-100 dark:bg-orange-900/20">
+                          <i className={`${bill.icon || 'fas fa-file-invoice-dollar'} text-orange-600 text-sm`}></i>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm" data-testid={`bill-name-${bill.id}`}>
+                            {bill.name}
+                          </p>
+                          <p className="text-muted-foreground text-xs" data-testid={`bill-category-${bill.id}`}>
+                            {bill.category || 'Bill due today'}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="font-semibold text-orange-600" data-testid={`bill-amount-${bill.id}`}>
+                        ${parseFloat(bill.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {todayTransactions.length === 0 && todayBills.length === 0 && (
+                <p className="text-muted-foreground text-center py-4" data-testid="text-no-activity">
+                  No activity today
                 </p>
               )}
             </div>
             
-            <Button
-              className="w-full mt-4 h-12 rounded-xl font-medium"
-              onClick={() => setShowTransactionForm(true)}
-              data-testid="button-add-transaction"
-            >
-              Add New Transaction
-            </Button>
+            <div className="flex gap-2 mt-4">
+              <Button
+                className="flex-1 h-12 rounded-xl font-medium bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  setTransactionType("income");
+                  setShowTransactionForm(true);
+                }}
+                data-testid="button-add-income"
+              >
+                <i className="fas fa-plus mr-2"></i>
+                Add Income
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-xl font-medium bg-red-600 hover:bg-red-700"
+                onClick={() => {
+                  setTransactionType("expense");
+                  setShowTransactionForm(true);
+                }}
+                data-testid="button-add-expense"
+              >
+                <i className="fas fa-minus mr-2"></i>
+                Add Expense
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -225,7 +299,7 @@ export default function Calendar() {
       <Dialog open={showTransactionForm} onOpenChange={setShowTransactionForm}>
         <DialogContent className="max-w-md mx-auto">
           <TransactionForm
-            type="expense"
+            type={transactionType}
             onClose={() => setShowTransactionForm(false)}
           />
         </DialogContent>

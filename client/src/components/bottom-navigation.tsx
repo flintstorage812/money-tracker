@@ -8,12 +8,13 @@ export default function BottomNavigation() {
     { path: "/", icon: "fas fa-home", label: "Home", testId: "nav-home" },
     { path: "/calendar", icon: "fas fa-calendar", label: "Calendar", testId: "nav-calendar" },
     { path: "/savings", icon: "fas fa-piggy-bank", label: "Savings", testId: "nav-savings" },
+    { path: "/bills", icon: "fas fa-file-invoice-dollar", label: "Bills", testId: "nav-bills" },
     { path: "/profile", icon: "fas fa-user", label: "Profile", testId: "nav-profile" },
   ];
 
   return (
     <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card border-t border-border">
-      <div className="grid grid-cols-4 py-2">
+      <div className="grid grid-cols-5 py-2">
         {navItems.map((item) => (
           <Button
             key={item.path}

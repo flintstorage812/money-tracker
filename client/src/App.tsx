@@ -9,6 +9,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Calendar from "@/pages/calendar";
 import Savings from "@/pages/savings";
+import Bills from "@/pages/bills";
 import Profile from "@/pages/profile";
 import BottomNavigation from "@/components/bottom-navigation";
 
@@ -38,6 +39,7 @@ function Router() {
             <Route path="/" component={Dashboard} />
             <Route path="/calendar" component={Calendar} />
             <Route path="/savings" component={Savings} />
+            <Route path="/bills" component={Bills} />
             <Route path="/profile" component={Profile} />
           </>
         )}

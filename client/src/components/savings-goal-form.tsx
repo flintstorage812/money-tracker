@@ -11,7 +11,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { insertSavingsGoalSchema, type InsertSavingsGoalSchema } from "@shared/schema";
 import { z } from "zod";
 
-const formSchema = insertSavingsGoalSchema.extend({
+const formSchema = z.object({
+  name: z.string().min(1, "Goal name is required"),
   targetAmount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
     message: "Target amount must be a positive number",
   }),
@@ -21,6 +22,10 @@ const formSchema = insertSavingsGoalSchema.extend({
   }, {
     message: "Monthly contribution must be a positive number",
   }),
+  targetDate: z.string().optional(),
+  icon: z.string().default("piggy-bank"),
+  color: z.string().default("success"),
+  isActive: z.boolean().default(true),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -86,6 +91,8 @@ export default function SavingsGoalForm({ onClose }: SavingsGoalFormProps) {
   });
 
   const onSubmit = (data: FormSchema) => {
+    console.log("Form submitted with data:", data);
+    console.log("Form errors:", form.formState.errors);
     createGoalMutation.mutate(data);
   };
 
@@ -232,6 +239,12 @@ export default function SavingsGoalForm({ onClose }: SavingsGoalFormProps) {
               disabled={createGoalMutation.isPending}
               className="flex-1 h-12"
               data-testid="button-submit"
+              onClick={() => {
+                // Debug logging to help identify form issues
+                console.log("Submit button clicked");
+                console.log("Form errors:", form.formState.errors);
+                console.log("Form values:", form.getValues());
+              }}
             >
               {createGoalMutation.isPending ? "Creating..." : "Create Goal"}
             </Button>

@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -14,9 +16,15 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [transactionType, setTransactionType] = useState<"income" | "expense">("income");
+  const [showRealBalance, setShowRealBalance] = useState(false);
 
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["/api/dashboard"],
+    retry: false,
+  });
+
+  const { data: savingsGoals } = useQuery({
+    queryKey: ["/api/savings-goals"],
     retry: false,
   });
 
@@ -24,6 +32,13 @@ export default function Dashboard() {
     setTransactionType(type);
     setShowTransactionForm(true);
   };
+
+  // Calculate sendable amount (current balance minus savings)
+  const totalSavings = savingsGoals?.reduce((sum: number, goal: any) => sum + parseFloat(goal.currentAmount || '0'), 0) || 0;
+  const currentBalance = parseFloat(dashboardData?.currentBalance || '0');
+  const sendableAmount = Math.max(0, currentBalance - totalSavings); // Ensure sendable amount is never negative
+  const displayBalance = showRealBalance ? currentBalance : sendableAmount;
+  const balanceLabel = showRealBalance ? "Total Balance" : "Sendable Amount";
 
   if (isLoading) {
     return (
@@ -61,11 +76,26 @@ export default function Dashboard() {
       {/* Balance Card */}
       <div className="p-4">
         <div className="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-6 text-primary-foreground mb-6">
+          {/* Balance Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="balance-toggle"
+                checked={showRealBalance}
+                onCheckedChange={setShowRealBalance}
+                className="data-[state=checked]:bg-primary-foreground/20"
+              />
+              <Label htmlFor="balance-toggle" className="text-sm opacity-80 cursor-pointer">
+                Show total balance
+              </Label>
+            </div>
+          </div>
+          
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="opacity-80 text-sm">Current Balance</p>
+              <p className="opacity-80 text-sm">{balanceLabel}</p>
               <h3 className="text-3xl font-bold" data-testid="text-current-balance">
-                ${parseFloat(dashboardData?.currentBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                ${displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </h3>
             </div>
             <div className="text-right">
@@ -89,6 +119,16 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
+          
+          {/* Show savings info when in sendable mode */}
+          {!showRealBalance && totalSavings > 0 && (
+            <div className="mt-4 pt-4 border-t border-primary-foreground/20">
+              <div className="flex items-center justify-between text-sm">
+                <span className="opacity-80">In savings</span>
+                <span className="font-semibold">${totalSavings.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}

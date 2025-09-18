@@ -166,6 +166,10 @@ export class DatabaseStorage implements IStorage {
 
   async addToSavingsGoal(goalId: string, amount: string): Promise<SavingsGoal> {
     const [goal] = await db.select().from(savingsGoals).where(eq(savingsGoals.id, goalId));
+    if (!goal) {
+      throw new Error('Savings goal not found');
+    }
+
     const newAmount = (parseFloat(goal.currentAmount || '0') + parseFloat(amount)).toString();
     
     const [updated] = await db
@@ -173,6 +177,19 @@ export class DatabaseStorage implements IStorage {
       .set({ currentAmount: newAmount, updatedAt: new Date() })
       .where(eq(savingsGoals.id, goalId))
       .returning();
+
+    // Create a corresponding expense transaction for the savings contribution
+    await this.createTransaction({
+      userId: goal.userId,
+      type: 'expense',
+      amount: amount,
+      description: `Savings contribution: ${goal.name}`,
+      category: 'Savings',
+      date: new Date().toISOString().split('T')[0],
+      frequency: 'one_time',
+      isRecurring: false,
+    });
+
     return updated;
   }
 
@@ -235,11 +252,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markBillAsPaid(billId: string): Promise<Bill> {
+    // First get the bill details
+    const [bill] = await db.select().from(bills).where(eq(bills.id, billId));
+    if (!bill) {
+      throw new Error('Bill not found');
+    }
+
+    // Update the bill as paid
     const [updated] = await db
       .update(bills)
       .set({ isPaid: true, paidDate: new Date().toISOString().split('T')[0], updatedAt: new Date() })
       .where(eq(bills.id, billId))
       .returning();
+
+    // Create a corresponding expense transaction for the bill payment
+    await this.createTransaction({
+      userId: bill.userId,
+      type: 'expense',
+      amount: bill.amount,
+      description: `Bill payment: ${bill.name}`,
+      category: bill.category || 'Bills',
+      date: new Date().toISOString().split('T')[0],
+      frequency: 'one_time',
+      isRecurring: false,
+    });
+
     return updated;
   }
 

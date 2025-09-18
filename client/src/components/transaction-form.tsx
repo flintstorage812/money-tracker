@@ -86,7 +86,7 @@ export default function TransactionForm({ type, onClose }: TransactionFormProps)
 
   const categories = type === "income" 
     ? ["Salary", "Freelance", "Investment", "Gift", "Other"]
-    : ["Food", "Transportation", "Shopping", "Bills", "Entertainment", "Healthcare", "Other"];
+    : ["Food", "Transportation", "Shopping", "Bills", "Savings", "Entertainment", "Healthcare", "Other"];
 
   return (
     <div className="space-y-4">
